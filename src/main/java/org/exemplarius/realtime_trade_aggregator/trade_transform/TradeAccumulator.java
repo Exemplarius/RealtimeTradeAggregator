@@ -16,8 +16,8 @@ public class TradeAccumulator {
     public double sellLow = Double.MAX_VALUE;
     public double buyClose = 0;
     public double sellClose = 0;
-    public Timestamp lastBuyTimestamp = new Timestamp(0);
-    public Timestamp lastSellTimestamp = new Timestamp(0);
+    public Timestamp lastBuyTimestamp = null; //new Timestamp(0);
+    public Timestamp lastSellTimestamp = null; //new Timestamp(0);
     public double open = 0;
     public double high = Double.MIN_VALUE;
     public double low = Double.MAX_VALUE;

@@ -22,8 +22,11 @@ public class AggregatedTrade {
     public double high;
     public double low;
     public double close;
-    public Timestamp windowEnd;
+    public Timestamp timestamp;
 
+    public Timestamp timestamp_tf_rounded_ntz;
+
+    public Timestamp timestamp_tf_rounded_tz;
     // Constructor and toString method omitted for brevity
 
 
@@ -49,7 +52,7 @@ public class AggregatedTrade {
                 ", high=" + String.format("%.2f", high) +
                 ", low=" + String.format("%.2f", low) +
                 ", close=" + String.format("%.2f", close) +
-                ", windowEnd=" + (windowEnd != null ? windowEnd.toString() : "null") +
+                ", windowEnd=" + (timestamp != null ? timestamp.toString() : "null") +
                 '}';
     }
 }

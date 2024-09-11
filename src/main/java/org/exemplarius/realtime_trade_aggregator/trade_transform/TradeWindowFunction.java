@@ -31,7 +31,9 @@ public class TradeWindowFunction extends ProcessWindowFunction<TradeAccumulator,
         result.high = acc.high;
         result.low = acc.low;
         result.close = acc.close;
-        result.windowEnd = new Timestamp(context.window().getEnd());
+        result.timestamp = new Timestamp(context.window().getEnd());
+        result.timestamp_tf_rounded_ntz = result.timestamp;
+        result.timestamp_tf_rounded_tz = result.timestamp;
         out.collect(result);
     }
 }
