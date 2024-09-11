@@ -1,7 +1,6 @@
 package org.exemplarius.realtime_trade_aggregator;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.formats.json.JsonNodeDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -10,26 +9,27 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.formats.json.JsonDeserializationSchema;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
+import org.exemplarius.realtime_trade_aggregator.trade_input.TradeTable;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeAggregateFunction;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeUnit;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeWindowFunction;
+import org.exemplarius.realtime_trade_aggregator.utils.TimerBasedWatermarkGenerator;
+import org.exemplarius.realtime_trade_aggregator.utils.TradeTableJsonDeserializationSchema;
 
 import java.time.Duration;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.sql.Timestamp;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static org.exemplarius.realtime_trade_aggregator.TimestampUtils.greater;
+import static org.exemplarius.realtime_trade_aggregator.utils.TimestampUtils.greater;
 
 
 public class Main {
@@ -42,31 +42,32 @@ public class Main {
 
         JsonDeserializationSchema schema = new JsonDeserializationSchema<TradeTable>(TradeTable.class);
         JsonNodeDeserializationSchema s = new JsonNodeDeserializationSchema();
-
+        TradeTableJsonDeserializationSchema tts = new TradeTableJsonDeserializationSchema();
         // TODO Update flink version and update to fix custom deserialzer to parse json
         FlinkKafkaConsumer<TradeTable> kafkaConsumer = new FlinkKafkaConsumer<>(
                 "alfa",
-                schema,
+                tts,
                 properties
         );
 
 //
         WatermarkStrategy<TradeTable> watermarkStrategy =
                 WatermarkStrategy
-                        .<TradeTable>forGenerator(ctx -> new TimerBasedWatermarkGenerator(Duration.ofSeconds(3L)))
-                        .withTimestampAssigner((event, timestamp) -> {// event.get("timestamp").asLong()
-                            List<Trade> trades = event.getData();
-                            List<Timestamp> timestamps = trades.stream().map(Trade::getTimestamp).collect(Collectors.toList());
-                            return timestamps.stream().reduce(timestamps.get(0), (trdA, trdB) -> {
-                                Date a = greater(trdA, trdB);
-                                if (trdA.compareTo(trdB) > 0) {return trdA; }
-                                return trdB;
-                            }).getTime();
-                        });
+                    .<TradeTable>forGenerator(ctx -> new TimerBasedWatermarkGenerator(Duration.ofSeconds(3L)))
+                    .withTimestampAssigner((event, timestamp) -> {// event.get("timestamp").asLong()
+                        List<Trade> trades = event.getData();
+                        List<Timestamp> timestamps = trades.stream().map(Trade::getTimestamp).collect(Collectors.toList());
+                        return timestamps.stream().reduce(timestamps.get(0), (trdA, trdB) -> {
+                            Date a = greater(trdA, trdB);
+                            if (trdA.compareTo(trdB) > 0) {return trdA; }
+                            return trdB;
+                        }).getTime();
+                    });
                         //Watermark alignment might be better that timerbased .withWatermarkAlignment()
                         // idleness also
         DataStream<TradeUnit> tradeStream = env
                 .addSource(kafkaConsumer)
+                .filter(Objects::nonNull)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .flatMap(new FlatMapFunction<TradeTable, TradeUnit>() {
                     @Override

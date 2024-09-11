@@ -1,4 +1,4 @@
-package org.exemplarius.realtime_trade_aggregator;
+package org.exemplarius.realtime_trade_aggregator.utils;
 
 import java.sql.Timestamp;
 
