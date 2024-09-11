@@ -12,6 +12,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.formats.json.JsonDeserializationSchema;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.util.Collector;
+import org.exemplarius.realtime_trade_aggregator.jdbc_sink.JdbcDatabaseSink;
 import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
 import org.exemplarius.realtime_trade_aggregator.trade_input.TradeTable;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
@@ -43,14 +44,14 @@ public class Main {
         JsonDeserializationSchema schema = new JsonDeserializationSchema<TradeTable>(TradeTable.class);
         JsonNodeDeserializationSchema s = new JsonNodeDeserializationSchema();
         TradeTableJsonDeserializationSchema tts = new TradeTableJsonDeserializationSchema();
-        // TODO Update flink version and update to fix custom deserialzer to parse json
+
+
         FlinkKafkaConsumer<TradeTable> kafkaConsumer = new FlinkKafkaConsumer<>(
                 "alfa",
                 tts,
                 properties
         );
 
-//
         WatermarkStrategy<TradeTable> watermarkStrategy =
                 WatermarkStrategy
                     .<TradeTable>forGenerator(ctx -> new TimerBasedWatermarkGenerator(Duration.ofSeconds(3L)))
@@ -93,51 +94,11 @@ public class Main {
                 .aggregate(new TradeAggregateFunction(), new TradeWindowFunction());
 
         aggregatedStream.print();
-
+        aggregatedStream.addSink(JdbcDatabaseSink.Elva("trade_volume_xbt_usd_min01"));
         env.execute("Flink Trade Aggregation");
     }
 
 
-    public static void test(Properties properties) throws Exception {
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
-        JsonNodeDeserializationSchema s = new JsonNodeDeserializationSchema();
-
-        // TODO Update flink version and update to fix custom deserialzer to parse json
-        FlinkKafkaConsumer<ObjectNode> kafkaConsumer = new FlinkKafkaConsumer<>(
-                "alfa",
-                s,
-                properties
-        );
-
-        DataStream<String> alfa = env.addSource(kafkaConsumer)
-                .map(a -> a.asText());
-        alfa.print();
-
-        env.execute("Flink Trade Aggregation");
-
-    }
-
-
-    public static void test2(Properties properties) throws Exception {
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
-        JsonNodeDeserializationSchema s = new JsonNodeDeserializationSchema();
-        SimpleStringSchema sse = new SimpleStringSchema();
-        // TODO Update flink version and update to fix custom deserialzer to parse json
-        FlinkKafkaConsumer<String> kafkaConsumer = new FlinkKafkaConsumer<>(
-                "alfa",
-                sse,
-                properties
-        );
-
-        DataStream<String> alfa = env.addSource(kafkaConsumer)
-                .map(a -> a);
-        alfa.print();
-
-        env.execute("Flink Trade Aggregation");
-
-    }
 
     public static void main(String[] args) throws Exception {
 

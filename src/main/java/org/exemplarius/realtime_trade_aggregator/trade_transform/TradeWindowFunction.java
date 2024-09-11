@@ -5,6 +5,7 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 public class TradeWindowFunction extends ProcessWindowFunction<TradeAccumulator, AggregatedTrade, Boolean, TimeWindow> {
     @Override
@@ -34,6 +35,7 @@ public class TradeWindowFunction extends ProcessWindowFunction<TradeAccumulator,
         result.timestamp = new Timestamp(context.window().getEnd());
         result.timestamp_tf_rounded_ntz = result.timestamp;
         result.timestamp_tf_rounded_tz = result.timestamp;
+        result.processing_timestamp = Timestamp.valueOf(LocalDateTime.now());
         out.collect(result);
     }
 }

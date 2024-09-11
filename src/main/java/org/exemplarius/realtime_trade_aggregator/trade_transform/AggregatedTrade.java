@@ -27,6 +27,8 @@ public class AggregatedTrade {
     public Timestamp timestamp_tf_rounded_ntz;
 
     public Timestamp timestamp_tf_rounded_tz;
+
+    public Timestamp processing_timestamp;
     // Constructor and toString method omitted for brevity
 
 
