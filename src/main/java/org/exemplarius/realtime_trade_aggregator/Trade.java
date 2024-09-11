@@ -5,11 +5,11 @@ public class Trade {
     private Timestamp timestamp;
     private String symbol;
     private String side;
-    private int size;
+    private long size;
     private double price;
     private String tickDirection;
     private String trdMatchID;
-    private int grossValue;
+    private long grossValue;
     private double homeNotional;
     private double foreignNotional;
     private String trdType;
@@ -57,7 +57,7 @@ public class Trade {
         this.side = side;
     }
 
-    public int getSize() {
+    public long getSize() {
         return size;
     }
 
@@ -89,7 +89,7 @@ public class Trade {
         this.trdMatchID = trdMatchID;
     }
 
-    public int getGrossValue() {
+    public long getGrossValue() {
         return grossValue;
     }
 

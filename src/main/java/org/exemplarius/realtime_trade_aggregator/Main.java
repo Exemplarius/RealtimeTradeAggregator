@@ -33,70 +33,13 @@ import static org.exemplarius.realtime_trade_aggregator.TimestampUtils.greater;
 
 
 public class Main {
-    public static void tradeTransform(Properties properties) throws Exception {
-
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
-        JsonDeserializationSchema schema = new JsonDeserializationSchema<KafkaTradeMessage>(KafkaTradeMessage.class);
-        JsonNodeDeserializationSchema s = new JsonNodeDeserializationSchema();
-
-        // TODO Update flink version and update to fix custom deserialzer to parse json
-        FlinkKafkaConsumer<KafkaTradeMessage> kafkaConsumer = new FlinkKafkaConsumer<>(
-                "alfa",
-                schema,
-                properties
-        );
-
-        kafkaConsumer.assignTimestampsAndWatermarks(
-                WatermarkStrategy
-                        .<KafkaTradeMessage>forBoundedOutOfOrderness(Duration.ofSeconds(3L))
-                        .withTimestampAssigner((event, timestamp) -> {// event.get("timestamp").asLong()
-                            List<Trade> trades = event.getValue().getData();
-                            List<Timestamp> timestamps = trades.stream().map(t -> t.getTimestamp()).collect(Collectors.toList());
-                            return timestamps.stream().reduce(timestamps.get(0), (trdA, trdB) -> {
-                                Date a = greater(trdA, trdB);
-                                if (trdA.compareTo(trdB) > 0) {return trdA; }
-                                return trdB;
-                            }).getTime();
-                        })
-        );
-
-        DataStream<TradeUnit> tradeStream = env
-                .addSource(kafkaConsumer)
-                .flatMap(new FlatMapFunction<KafkaTradeMessage, TradeUnit>() {
-                    @Override
-                    public void flatMap(KafkaTradeMessage kafkaTradeMessage, Collector<TradeUnit> collector) throws Exception {
-                        kafkaTradeMessage.getValue().getData().stream()
-                                .forEach(m -> {
-                                    collector.collect(
-                                            new TradeUnit(
-                                                    m.getTimestamp(),
-                                                    m.getSide(),
-                                                    m.getSize(),
-                                                    m.getPrice()
-                                            )
-                                    );
-                                });
-                    }
-                });
-
-
-        DataStream<AggregatedTrade> aggregatedStream = tradeStream
-                .keyBy(trade -> true) // Global window
-                .window(TumblingEventTimeWindows.of(Time.minutes(1)))
-                .aggregate(new TradeAggregateFunction(), new TradeWindowFunction());
-
-        aggregatedStream.print();
-
-        env.execute("Flink Trade Aggregation");
-    }
-
-
 
     public static void tradeTransform2(Properties properties) throws Exception {
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
+        env.getConfig().setAutoWatermarkInterval(1000);
+
         JsonDeserializationSchema schema = new JsonDeserializationSchema<TradeTable>(TradeTable.class);
         JsonNodeDeserializationSchema s = new JsonNodeDeserializationSchema();
 
@@ -107,22 +50,24 @@ public class Main {
                 properties
         );
 
-        kafkaConsumer.assignTimestampsAndWatermarks(
+//
+        WatermarkStrategy<TradeTable> watermarkStrategy =
                 WatermarkStrategy
-                        .<TradeTable>forBoundedOutOfOrderness(Duration.ofSeconds(3L))
+                        .<TradeTable>forGenerator(ctx -> new TimerBasedWatermarkGenerator(Duration.ofSeconds(3L)))
                         .withTimestampAssigner((event, timestamp) -> {// event.get("timestamp").asLong()
                             List<Trade> trades = event.getData();
-                            List<Timestamp> timestamps = trades.stream().map(t -> t.getTimestamp()).collect(Collectors.toList());
+                            List<Timestamp> timestamps = trades.stream().map(Trade::getTimestamp).collect(Collectors.toList());
                             return timestamps.stream().reduce(timestamps.get(0), (trdA, trdB) -> {
                                 Date a = greater(trdA, trdB);
                                 if (trdA.compareTo(trdB) > 0) {return trdA; }
                                 return trdB;
                             }).getTime();
-                        })
-        );
-
+                        });
+                        //Watermark alignment might be better that timerbased .withWatermarkAlignment()
+                        // idleness also
         DataStream<TradeUnit> tradeStream = env
                 .addSource(kafkaConsumer)
+                .assignTimestampsAndWatermarks(watermarkStrategy)
                 .flatMap(new FlatMapFunction<TradeTable, TradeUnit>() {
                     @Override
                     public void flatMap(TradeTable message, Collector<TradeUnit> collector) throws Exception {
