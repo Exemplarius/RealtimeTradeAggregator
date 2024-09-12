@@ -23,10 +23,7 @@ import org.exemplarius.realtime_trade_aggregator.utils.TimerBasedWatermarkGenera
 import org.exemplarius.realtime_trade_aggregator.utils.TradeTableJsonDeserializationSchema;
 
 import java.time.Duration;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.sql.Timestamp;
 import java.util.stream.Collectors;
 
@@ -102,7 +99,7 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
-
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", "localhost:29092");
         properties.setProperty("group.id", "flink-trade-consumer");
@@ -111,22 +108,6 @@ public class Main {
         //test2(properties);
         tradeTransform2(properties);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }

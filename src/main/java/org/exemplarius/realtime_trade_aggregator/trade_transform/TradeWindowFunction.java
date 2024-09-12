@@ -6,6 +6,8 @@ import org.apache.flink.util.Collector;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 public class TradeWindowFunction extends ProcessWindowFunction<TradeAccumulator, AggregatedTrade, Boolean, TimeWindow> {
     @Override
@@ -22,18 +24,26 @@ public class TradeWindowFunction extends ProcessWindowFunction<TradeAccumulator,
         result.sellOpen = acc.sellOpen;
         result.buyHigh = acc.buyHigh;
         result.sellHigh = acc.sellHigh;
-        result.buyLow = acc.buyLow;
-        result.sellLow = acc.sellLow;
+        result.buyLow = acc.buyLow == Double.MAX_VALUE ? -1 : acc.buyLow;
+        result.sellLow = acc.sellLow == Double.MAX_VALUE ? -1: acc.sellLow;
         result.buyClose = acc.buyClose;
         result.sellClose = acc.sellClose;
         result.lastBuyTimestamp = acc.lastBuyTimestamp;
         result.lastSellTimestamp = acc.lastSellTimestamp;
         result.open = acc.open;
         result.high = acc.high;
-        result.low = acc.low;
+        result.low = acc.low == Double.MAX_VALUE ? -1: acc.low;
         result.close = acc.close;
-        result.timestamp = new Timestamp(context.window().getEnd());
-        result.timestamp_tf_rounded_ntz = result.timestamp;
+
+        Timestamp windowEnd = new Timestamp(context.window().getEnd());
+        result.timestamp = windowEnd;
+
+        // The approach here is to convert the time to zoned in local timezone, then convert the same instant (time without the timezone offset) to the utc zone
+        ZonedDateTime zdt = ZonedDateTime.of(windowEnd.toLocalDateTime(), ZoneId.systemDefault());
+        ZonedDateTime utc = zdt.withZoneSameInstant(ZoneId.of("UTC"));
+        Timestamp timestampInUtc = Timestamp.valueOf(utc.toLocalDateTime());
+
+        result.timestamp_tf_rounded_ntz = Timestamp.valueOf(result.timestamp.toLocalDateTime().atZone(ZoneId.of("UTC")).toLocalDateTime());
         result.timestamp_tf_rounded_tz = result.timestamp;
         result.processing_timestamp = Timestamp.valueOf(LocalDateTime.now());
         out.collect(result);

@@ -27,7 +27,7 @@ public class TradeAggregateFunction implements AggregateFunction<TradeUnit, Trad
             acc.sells++;
             acc.sellVolume += trade.size;
             acc.sellHigh = Math.max(acc.sellHigh, trade.price);
-            acc.sellLow = Math.min(acc.sellLow, trade.price);
+            acc.sellLow = acc.sellLow > 0 ? Math.min(acc.sellLow, trade.price): trade.price;
             if (acc.sellOpen == 0) acc.sellOpen = trade.price;
             acc.sellClose = trade.price;
             acc.lastSellTimestamp = trade.timestamp;
