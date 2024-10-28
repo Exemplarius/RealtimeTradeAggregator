@@ -1,6 +1,7 @@
 package org.exemplarius.realtime_trade_aggregator.trade_transform;
 
 import org.apache.flink.api.common.functions.AggregateFunction;
+import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
 
 import java.sql.Timestamp;
 

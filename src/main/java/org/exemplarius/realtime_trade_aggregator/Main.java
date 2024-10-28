@@ -1,7 +1,6 @@
 package org.exemplarius.realtime_trade_aggregator;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.formats.json.JsonNodeDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -10,15 +9,12 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.formats.json.JsonDeserializationSchema;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.util.Collector;
 import org.exemplarius.realtime_trade_aggregator.jdbc_sink.JdbcDatabaseSink;
 import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
 import org.exemplarius.realtime_trade_aggregator.trade_input.TradeTable;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeAggregateFunction;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeUnit;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeWindowFunction;
+import org.exemplarius.realtime_trade_aggregator.trade_transform.*;
+import org.exemplarius.realtime_trade_aggregator.trigger.ProcessingTimeFallbackTrigger;
 import org.exemplarius.realtime_trade_aggregator.utils.TimerBasedWatermarkGenerator;
 import org.exemplarius.realtime_trade_aggregator.utils.TradeTableJsonDeserializationSchema;
 
@@ -31,6 +27,19 @@ import static org.exemplarius.realtime_trade_aggregator.utils.TimestampUtils.gre
 
 
 public class Main {
+
+
+    public static void main(String[] args) throws Exception {
+
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", "localhost:29092");
+        properties.setProperty("group.id", "flink-trade-consumer");
+
+        //tradeTransform(properties);
+        //test2(properties);
+        tradeTransform2(properties);
+    }
 
     public static void tradeTransform2(Properties properties) throws Exception {
 
@@ -52,6 +61,7 @@ public class Main {
         WatermarkStrategy<TradeTable> watermarkStrategy =
                 WatermarkStrategy
                     .<TradeTable>forGenerator(ctx -> new TimerBasedWatermarkGenerator(Duration.ofSeconds(3L)))
+                    //.withIdleness(Duration.ofMinutes(1))
                     .withTimestampAssigner((event, timestamp) -> {// event.get("timestamp").asLong()
                         List<Trade> trades = event.getData();
                         List<Timestamp> timestamps = trades.stream().map(Trade::getTimestamp).collect(Collectors.toList());
@@ -61,8 +71,8 @@ public class Main {
                             return trdB;
                         }).getTime();
                     });
-                        //Watermark alignment might be better that timerbased .withWatermarkAlignment()
-                        // idleness also
+                        //Watermark alignment might be better than timerbased .withWatermarkAlignment()
+                        // for idleness also
         DataStream<TradeUnit> tradeStream = env
                 .addSource(kafkaConsumer)
                 .filter(Objects::nonNull)
@@ -88,7 +98,9 @@ public class Main {
         DataStream<AggregatedTrade> aggregatedStream = tradeStream
                 .keyBy(trade -> true) // Global window
                 .window(TumblingEventTimeWindows.of(Time.minutes(1)))
-                .aggregate(new TradeAggregateFunction(), new TradeWindowFunction());
+                .trigger(new ProcessingTimeFallbackTrigger(Time.seconds(30)))
+                // applies window function on the aggregated data
+                .aggregate(new TradeAggregateFunction(), new EmptyAwareTradeWindowFunction());
 
         aggregatedStream.print();
         aggregatedStream.addSink(JdbcDatabaseSink.Elva("trade_volume_xbt_usd_min01"));
@@ -97,17 +109,7 @@ public class Main {
 
 
 
-    public static void main(String[] args) throws Exception {
 
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-        Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", "localhost:29092");
-        properties.setProperty("group.id", "flink-trade-consumer");
-
-        //tradeTransform(properties);
-        //test2(properties);
-        tradeTransform2(properties);
-    }
 
 
 }

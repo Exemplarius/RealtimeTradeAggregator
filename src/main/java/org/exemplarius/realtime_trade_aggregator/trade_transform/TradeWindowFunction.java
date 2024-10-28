@@ -3,6 +3,7 @@ package org.exemplarius.realtime_trade_aggregator.trade_transform;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -10,9 +11,26 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class TradeWindowFunction extends ProcessWindowFunction<TradeAccumulator, AggregatedTrade, Boolean, TimeWindow> {
+
+    /**
+     * This function will run for each element inside the window
+     * @param key
+     * @param context
+     * @param elements
+     * @param out
+     */
     @Override
     public void process(Boolean key, Context context, Iterable<TradeAccumulator> elements, Collector<AggregatedTrade> out) {
+
+        System.out.println("HELLO");
+        E9sLogger.logger.info("PROCESSING");
+        if (!elements.iterator().hasNext()) {
+            E9sLogger.logger.info("No records available");
+        }
+
+
         TradeAccumulator acc = elements.iterator().next();
+
         AggregatedTrade result = new AggregatedTrade();
         // Transfer data from accumulator to result
         result.trades = acc.trades;
