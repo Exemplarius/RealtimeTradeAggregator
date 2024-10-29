@@ -7,6 +7,8 @@ import org.apache.flink.streaming.api.windowing.triggers.Trigger;
 import org.apache.flink.streaming.api.windowing.triggers.TriggerResult;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeUnit;
+import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
+
 public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow> {
 
     private final long intervalMs;
@@ -23,10 +25,11 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
         hasDataState.add(true);
 
         // Register event time timer for window end
-        ctx.registerEventTimeTimer(window.maxTimestamp());// TODO: I think this should be window.end
+        ctx.registerEventTimeTimer(window.maxTimestamp());// TODO: I think this should be window.end, different window means different context, extra null context för att vi inte clearar processing time ordentiligt
 
         // Calculate and register next processing time timer just in case
-        long nextMinute = (ctx.getCurrentProcessingTime() / 60000 + 1) * 60000 + 4000;
+        long nextMinute = window.getEnd() + 4000;//(ctx.getCurrentProcessingTime() / 60000 + 1) * 60000 + 4000;
+        //System.out.println(nextMinute);
         //if (nextMinute <= window.getEnd()) {
             ctx.registerProcessingTimeTimer(nextMinute);
         //}
@@ -42,7 +45,7 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
         Iterable<Boolean> data = hasDataState.get();
         if (data == null) {
             System.out.println("WHY IS IT NULL?");
-            return TriggerResult.FIRE;
+            return TriggerResult.CONTINUE;
         }
         boolean hasData = data.iterator().hasNext();
 
@@ -51,6 +54,7 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
         //if (nextMinute <= window.getEnd()) {
             ctx.registerProcessingTimeTimer(nextMinute);
         //}
+        hasDataState.clear();
         System.out.println("PROCESSING TIME hast data? " + hasData);
         // Only fire if we have no data
         return hasData ? TriggerResult.CONTINUE : TriggerResult.FIRE;
@@ -60,7 +64,7 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
     public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) throws Exception {
         if (time == window.maxTimestamp()) {
             // Clear the state when window completes
-            System.out.println("HERE!!!!!!!!");
+            System.out.println("EVENT TIME IS HERE!!!!!!!!");
             ListState<Boolean> hasDataState = ctx.getPartitionedState(HAS_DATA_DESCRIPTOR);
             hasDataState.clear();
             return TriggerResult.FIRE;
@@ -70,9 +74,10 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
 
     @Override
     public void clear(TimeWindow window, TriggerContext ctx) throws Exception {
+        E9sLogger.logger.info("CLEARING");
         ListState<Boolean> hasDataState = ctx.getPartitionedState(HAS_DATA_DESCRIPTOR);
         hasDataState.clear();
-        ctx.deleteProcessingTimeTimer(window.maxTimestamp());
+        ctx.deleteProcessingTimeTimer(window.getEnd() + 4000);
         ctx.deleteEventTimeTimer(window.maxTimestamp());
     }
 }
