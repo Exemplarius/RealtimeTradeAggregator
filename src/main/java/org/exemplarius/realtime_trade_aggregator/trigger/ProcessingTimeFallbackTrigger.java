@@ -25,15 +25,19 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
         hasDataState.add(true);
 
         // Register event time timer for window end
-        ctx.registerEventTimeTimer(window.maxTimestamp());// TODO: I think this should be window.end, different window means different context, extra null context för att vi inte clearar processing time ordentiligt
+        ctx.registerEventTimeTimer(window.maxTimestamp());
+
+        // TODO: I think this should be window.end, different window means different context, och  extra null context för att vi inte clearar processing time ordentiligt
 
         // Calculate and register next processing time timer just in case
-        long nextMinute = window.getEnd() + 4000;//(ctx.getCurrentProcessingTime() / 60000 + 1) * 60000 + 4000;
+        long nextMinute = window.getEnd() + intervalMs;//(ctx.getCurrentProcessingTime() / 60000 + 1) * 60000 + 4000;
         //System.out.println(nextMinute);
+        //E9sLogger.logger.info("Max TIMESTAMP " + window.maxTimestamp());
+        //System.out.println(window.maxTimestamp());
         //if (nextMinute <= window.getEnd()) {
             ctx.registerProcessingTimeTimer(nextMinute);
         //}
-
+        //E9sLogger.logger.info("ELEMENT");
         return TriggerResult.CONTINUE;
     }
 
@@ -50,34 +54,45 @@ public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow
         boolean hasData = data.iterator().hasNext();
 
         // Schedule next processing timer
-        long nextMinute = (time / 60000 + 1) * 60000 + 4000;
+        long nextMinute = (time / 60000 + 1) * 60000 + intervalMs;
         //if (nextMinute <= window.getEnd()) {
             ctx.registerProcessingTimeTimer(nextMinute);
         //}
         hasDataState.clear();
-        System.out.println("PROCESSING TIME hast data? " + hasData);
+        System.out.println("PROCESSING TIME has data? " + hasData);
         // Only fire if we have no data
-        return hasData ? TriggerResult.CONTINUE : TriggerResult.FIRE;
+        return TriggerResult.FIRE;
+        //return hasData ? TriggerResult.CONTINUE : TriggerResult.FIRE;
     }
 
     @Override
     public TriggerResult onEventTime(long time, TimeWindow window, TriggerContext ctx) throws Exception {
-        if (time == window.maxTimestamp()) {
-            // Clear the state when window completes
-            System.out.println("EVENT TIME IS HERE!!!!!!!!");
-            ListState<Boolean> hasDataState = ctx.getPartitionedState(HAS_DATA_DESCRIPTOR);
-            hasDataState.clear();
-            return TriggerResult.FIRE;
-        }
+        E9sLogger.logger.info("Händer det saker här?");
+//        if (time == window.maxTimestamp()) {
+//            // Clear the state when window completes
+//            System.out.println("EVENT TIME IS HERE!!!!!!!!");
+//            ListState<Boolean> hasDataState = ctx.getPartitionedState(HAS_DATA_DESCRIPTOR);
+//            hasDataState.clear();
+//            return TriggerResult.FIRE;
+//        }
         return TriggerResult.CONTINUE;
     }
 
     @Override
     public void clear(TimeWindow window, TriggerContext ctx) throws Exception {
         E9sLogger.logger.info("CLEARING");
+
         ListState<Boolean> hasDataState = ctx.getPartitionedState(HAS_DATA_DESCRIPTOR);
         hasDataState.clear();
-        ctx.deleteProcessingTimeTimer(window.getEnd() + 4000);
+        ctx.deleteProcessingTimeTimer(window.getEnd() + intervalMs);
         ctx.deleteEventTimeTimer(window.maxTimestamp());
+    }
+
+    @Override
+    public void onMerge(TimeWindow window, OnMergeContext ctx) {
+        E9sLogger.logger.info("MERGING");
+        // Register the timer for the merged window
+        long next = (window.getEnd() / 60000 + 1) * 60000 + intervalMs;
+        //ctx.registerProcessingTimeTimer(next);
     }
 }

@@ -13,7 +13,7 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <flink.version>1.18.1</flink.version>
-        <flink.version_no_minor>1.18</flink.version_no_minor>
+        <flink.version_short>1.18</flink.version_short>
         <java.version>1.8</java.version>
         <scala.binary.version>2.12</scala.binary.version>
     </properties>
@@ -40,18 +40,23 @@
             <version>${flink.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-base</artifactId>
+            <version>1.18.0</version>
+        </dependency>
 
         <!-- Flink Kafka Connector -->
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-kafka</artifactId>
 <!--            <version>${flink.version}</version>-->
-            <version>3.2.0-${flink.version_no_minor}</version>
+            <version>3.2.0-${flink.version_short}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-jdbc</artifactId>
-            <version>3.2.0-${flink.version_no_minor}</version>
+            <version>3.2.0-${flink.version_short}</version>
         </dependency>
         <!-- Flink JSON Utilities -->
         <dependency>

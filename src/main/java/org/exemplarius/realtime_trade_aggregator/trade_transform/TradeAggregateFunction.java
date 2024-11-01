@@ -50,4 +50,5 @@ public class TradeAggregateFunction implements AggregateFunction<TradeUnit, Trad
         // Implement merge logic if needed for parallel processing
         return acc1;
     }
+
 }
