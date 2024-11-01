@@ -1,9 +1,12 @@
 package org.exemplarius.realtime_trade_aggregator.process;
+import org.apache.flink.api.common.state.MapState;
+import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
+import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeAccumulator;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeAggregateFunction;
@@ -17,44 +20,55 @@ import java.time.ZonedDateTime;
 
 public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, TradeUnit, AggregatedTrade> {
     private static final long WINDOW_SIZE = 60 * 1000; // 1 minute in milliseconds
-
+    private static final long WINDOW_OFFSET = 4000;
     private ValueState<AggregatedTrade> lastTradeState;
-    private ValueState<TradeAccumulator> currentWindowState;
+    private MapState<Long, TradeAccumulator> activeWindowStates;
 
 
+    private TradeAccumulator windowState(Long key) throws Exception {
+        if (activeWindowStates.contains(key)) {
+            return activeWindowStates.get(key);
+        }
+        return new TradeAccumulator();
+    }
 
     @Override
     public void processElement(TradeUnit trade, Context ctx, Collector<AggregatedTrade> out) throws Exception {
+
+
         // Align to minute boundaries
         long eventTime = trade.timestamp.getTime();
         long currentWindowStart = (eventTime / WINDOW_SIZE) * WINDOW_SIZE;
 
         // Register timer for this window if not already registered
         long windowEnd = currentWindowStart + WINDOW_SIZE;
-        ctx.timerService().registerProcessingTimeTimer(windowEnd);
+        ctx.timerService().registerProcessingTimeTimer(windowEnd + WINDOW_OFFSET);
+
 
         // Get or create accumulator for current window
-        TradeAccumulator acc = currentWindowState.value();
-        if (acc == null) {
-            acc = new TradeAccumulator();
-        }
-
+        TradeAccumulator acc = windowState(windowEnd);
         // Use existing aggregate function logic
         TradeAggregateFunction aggregator = new TradeAggregateFunction();
-        acc = aggregator.add(trade, acc);
-        currentWindowState.update(acc);
 
-        E9sLogger.logger.info("Processed trade for window ending at: " + new Timestamp(windowEnd));
+        acc = aggregator.add(trade, acc);
+
+        activeWindowStates.put(windowEnd, acc);
+
+
+        //E9sLogger.logger.info("Processed trade for window ending at: " + new Timestamp(windowEnd));
     }
 
     @Override
     public void onTimer(long timestamp, OnTimerContext ctx, Collector<AggregatedTrade> out) throws Exception {
-        TradeAccumulator acc = currentWindowState.value();
+
+        Long windowEndTimestamp = timestamp - WINDOW_OFFSET;
+
         AggregatedTrade lastTrade = lastTradeState.value();
 
         AggregatedTrade result = new AggregatedTrade();
-        if (acc != null) {
+        if (activeWindowStates.contains(windowEndTimestamp)) {
             // We had trades in this window - use accumulated data
+            TradeAccumulator acc = activeWindowStates.get(windowEndTimestamp);
             result.trades = acc.trades;
             result.buys = acc.buys;
             result.sells = acc.sells;
@@ -104,9 +118,9 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
             E9sLogger.logger.info("No data available yet, skipping window");
             return;
         }
-
+        E9sLogger.logger.warn("WindowEndTimestamp " + windowEndTimestamp);
         // Set timestamps exactly as in your original code
-        Timestamp windowEnd = new Timestamp(timestamp);
+        Timestamp windowEnd = new Timestamp(windowEndTimestamp);
         result.timestamp = windowEnd;
 
         // The approach here is to convert the time to zoned in local timezone,
@@ -124,10 +138,10 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
         lastTradeState.update(result);
 
         // Clear the current window state
-        currentWindowState.clear();
+        activeWindowStates.remove(timestamp - WINDOW_OFFSET);
 
         // Schedule next timer
-        ctx.timerService().registerProcessingTimeTimer(timestamp + WINDOW_SIZE);
+        ctx.timerService().registerProcessingTimeTimer(windowEndTimestamp + WINDOW_SIZE + WINDOW_OFFSET);
     }
 
     @Override
@@ -135,8 +149,11 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
         super.open(parameters);
         lastTradeState = getRuntimeContext().getState(
                 new ValueStateDescriptor<>("lastTrade", AggregatedTrade.class));
-        currentWindowState = getRuntimeContext().getState(
-                new ValueStateDescriptor<>("currentWindow", TradeAccumulator.class));
+
+        activeWindowStates = getRuntimeContext().getMapState(
+                new MapStateDescriptor<>("state-overlap-tracker", Long.class, TradeAccumulator.class)
+        );
+
         // Schedule the first timer aligned to the next minute boundary
         long now = System.currentTimeMillis();
         long nextWindow = ((now / WINDOW_SIZE) + 1) * WINDOW_SIZE;
