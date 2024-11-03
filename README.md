@@ -12,6 +12,17 @@ watermark is set to 3 seconds.
 https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/connectors/datastream/jdbc/
 
 
+### Issue
+```bash
+2024-11-01 22:02:18 INFO  NetworkClient:937 - [AdminClient clientId=flink-trade-consumer-enumerator-admin-client] Node 1 disconnected.
+```
+Issue:
+https://stackoverflow.com/questions/75526090/kafka-clients-3-2-3-node-disconnected-messages-frequently
+
+Issue resolution:
+https://docs.confluent.io/platform/current/installation/configuration/connect/index.html#connections-max-idle-ms
+
+
 ### Test topic structure
 ```java
 
