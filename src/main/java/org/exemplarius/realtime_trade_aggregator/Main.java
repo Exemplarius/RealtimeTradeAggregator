@@ -43,6 +43,7 @@ public class Main {
         KafkaConfig kafkaConfig = KafkaConfigLoader.LoadConfig();
 
         Properties properties = new Properties();
+        E9sLogger.logger.info( kafkaConfig.getServer() + ":" + kafkaConfig.getPort());
         properties.setProperty("bootstrap.servers", kafkaConfig.getServer() + ":" + kafkaConfig.getPort());
         properties.setProperty("group.id", "flink-trade-consumer");
         properties.setProperty("auto.offset.reset", "latest");
