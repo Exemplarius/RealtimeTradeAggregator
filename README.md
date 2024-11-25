@@ -74,3 +74,11 @@ https://docs.confluent.io/platform/current/installation/configuration/connect/in
 /usr/lib/jvm/java-11-openjdk/bin/java -cp target/RealtimeTradeAggregator-1.0-SNAPSHOT-jar-with-dependencies org.exemplarius.realtime_trade_aggregator.Main
 
 ```
+
+
+### Modify Host
+In order to reach `exemplarius.dev.machine` 
+map it in `/etc/hosts` 
+```sh
+192.66.777.32 exemplarius.dev.machine
+```
