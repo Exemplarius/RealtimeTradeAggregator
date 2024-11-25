@@ -4,6 +4,8 @@ import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
 import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
 import org.apache.flink.connector.jdbc.JdbcSink;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.exemplarius.realtime_trade_aggregator.config.JdbcConfigLoader;
+import org.exemplarius.realtime_trade_aggregator.config.JdbcDatabaseConfig;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
 
 import java.sql.PreparedStatement;
@@ -11,7 +13,7 @@ import java.sql.PreparedStatement;
 public class JdbcDatabaseSink {
 
     public static SinkFunction<AggregatedTrade> Elva(String tableName) {
-        JdbcDatabaseConfig config = JdbcConfigLoader.LoadDatabaseConfig();
+        JdbcDatabaseConfig config = JdbcConfigLoader.LoadConfig();
         SinkFunction<AggregatedTrade> sink =
             JdbcSink.sink(
                     "insert into " + tableName + " (trades, buys, sells, buy_volume, sell_volume, buy_open, sell_open, buy_high, sell_high, buy_low, sell_low, buy_close, sell_close, last_buy_timestamp, last_sell_timestamp, open, high, low, close, timestamp, timestamp_tf_rounded_ntz, timestamp_tf_rounded_tz, processing_timestamp) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

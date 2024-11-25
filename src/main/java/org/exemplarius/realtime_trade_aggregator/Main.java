@@ -13,6 +13,8 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.formats.json.JsonDeserializationSchema;
 import org.apache.flink.util.Collector;
+import org.exemplarius.realtime_trade_aggregator.config.KafkaConfig;
+import org.exemplarius.realtime_trade_aggregator.config.KafkaConfigLoader;
 import org.exemplarius.realtime_trade_aggregator.jdbc_sink.JdbcDatabaseSink;
 import org.exemplarius.realtime_trade_aggregator.process.ContinuousTradeProcessor;
 import org.exemplarius.realtime_trade_aggregator.process.PeriodicEmissionProcessFunction;
@@ -38,8 +40,10 @@ public class Main {
     public static void main(String[] args) throws Exception {
 
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        KafkaConfig kafkaConfig = KafkaConfigLoader.LoadConfig();
+
         Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", "localhost:29092");
+        properties.setProperty("bootstrap.servers", kafkaConfig.getServer() + ":" + kafkaConfig.getPort());
         properties.setProperty("group.id", "flink-trade-consumer");
         properties.setProperty("auto.offset.reset", "latest");
         //tradeTransform(properties);

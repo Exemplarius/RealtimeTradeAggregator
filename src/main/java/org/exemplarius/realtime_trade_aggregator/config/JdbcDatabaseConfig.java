@@ -1,4 +1,4 @@
-package org.exemplarius.realtime_trade_aggregator.jdbc_sink;
+package org.exemplarius.realtime_trade_aggregator.config;
 
 public class JdbcDatabaseConfig {
     private String hostname;
