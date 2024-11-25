@@ -67,3 +67,10 @@ https://docs.confluent.io/platform/current/installation/configuration/connect/in
 
     }
 ```
+
+
+# Running
+```
+/usr/lib/jvm/java-11-openjdk/bin/java -cp target/RealtimeTradeAggregator-1.0-SNAPSHOT-jar-with-dependencies org.exemplarius.realtime_trade_aggregator.Main
+
+```
