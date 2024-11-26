@@ -82,3 +82,18 @@ map it in `/etc/hosts`
 ```sh
 192.66.777.32 exemplarius.dev.machine
 ```
+
+### Setting up RealtimeTradeAggregator on Raspbian
+```sh
+cd /opt
+wget https://cdn.azul.com/zulu-embedded/bin/zulu11.35.36-ca-jdk11.0.5-linux_aarch64.tar.gz
+tar -xvzf zulu*tar.gz
+mv zulu11.35.36-ca-jdk11.0.5-linux_aarch64 jdk11
+chmod -R 755 jdk11
+
+# In the .bashrc add the followin
+export JAVA_HOME=/opt/jdk11
+export PATH=$JAVA_HOME/bin:$PATH
+
+source ~/.bashrc
+```
