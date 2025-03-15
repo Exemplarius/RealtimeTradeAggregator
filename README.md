@@ -71,7 +71,8 @@ https://docs.confluent.io/platform/current/installation/configuration/connect/in
 
 # Running
 ```
-/usr/lib/jvm/java-11-openjdk/bin/java -cp target/RealtimeTradeAggregator-1.0-SNAPSHOT-jar-with-dependencies org.exemplarius.realtime_trade_aggregator.Main
+> mvn clean package install assesmbly:single
+> /usr/lib/jvm/java-11-openjdk/bin/java -cp target/RealtimeTradeAggregator-1.0-SNAPSHOT-jar-with-dependencies org.exemplarius.realtime_trade_aggregator.Main
 
 ```
 
@@ -96,4 +97,6 @@ export JAVA_HOME=/opt/jdk11
 export PATH=$JAVA_HOME/bin:$PATH
 
 source ~/.bashrc
+
+use the build_and_run script to run with proper env parameters
 ```

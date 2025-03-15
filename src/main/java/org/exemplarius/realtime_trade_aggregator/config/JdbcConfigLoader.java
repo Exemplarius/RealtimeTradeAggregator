@@ -7,12 +7,13 @@ public class JdbcConfigLoader {
 
     public static JdbcDatabaseConfig LoadConfig() {
         Config conf = ConfigFactory.load();
+
         return new JdbcDatabaseConfig(
-            conf.getString("config.database.postgres.hostname"),
-            conf.getInt("config.database.postgres.port"),
-            conf.getString("config.database.postgres.database"),
-            conf.getString("config.database.postgres.username"),
-            conf.getString("config.database.postgres.password")
+                System.getenv("POSTGRES_HOST"),
+                Integer.parseInt(System.getenv("POSTGRES_PORT")),
+                conf.getString("config.database.postgres.database"),
+                System.getenv("POSTGRES_USER"),
+                System.getenv("POSTGRES_PASS")
         );
     }
 }
