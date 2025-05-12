@@ -42,6 +42,9 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
 
         // Register timer for this window if not already registered
         long windowEnd = currentWindowStart + WINDOW_SIZE;
+
+
+        // most likely we will need to adjust this to emit datat more often
         ctx.timerService().registerProcessingTimeTimer(windowEnd + WINDOW_OFFSET);
 
 

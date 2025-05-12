@@ -47,12 +47,13 @@ public class Main {
         properties.setProperty("bootstrap.servers", kafkaConfig.getServer() + ":" + kafkaConfig.getPort());
         properties.setProperty("group.id", "flink-trade-consumer");
         properties.setProperty("auto.offset.reset", "latest");
+
         //tradeTransform(properties);
         //test2(properties);
-        tradeTransform2(properties);
+        tradeTransform2(kafkaConfig.getTopic(), properties);
     }
 
-    public static void tradeTransform2(Properties properties) throws Exception {
+    public static void tradeTransform2(String topic, Properties properties) throws Exception {
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
@@ -64,7 +65,7 @@ public class Main {
 
 
         FlinkKafkaConsumer<TradeTable> kafkaConsumer = new FlinkKafkaConsumer<>(
-                "alfa",
+                topic,//"alfa",
                 tts,
                 properties
         );
@@ -72,7 +73,8 @@ public class Main {
 
         KafkaSource<TradeTable> source = KafkaSource.<TradeTable>builder()
                 .setBootstrapServers(properties.getProperty("bootstrap.servers"))
-                .setTopics("alfa")
+                //.setTopics("alfa")
+                .setTopics(topic)
                 .setGroupId(properties.getProperty("group.id"))
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(tts)
@@ -100,7 +102,7 @@ public class Main {
                 .fromSource(source, watermarkStrategy, "Kafka source")
                 .filter(a -> {
                     if (a == null) {
-                        E9sLogger.logger.info("WTF");
+                        E9sLogger.logger.info("Source has null events");
                         return false;
                     }
                     return true;
@@ -109,7 +111,7 @@ public class Main {
                 .flatMap(new FlatMapFunction<TradeTable, TradeUnit>() {
                     @Override
                     public void flatMap(TradeTable message, Collector<TradeUnit> collector) throws Exception {
-                        message.getData().stream()
+                        message.getData()
                             .forEach(m -> {
                                 collector.collect(
                                     new TradeUnit(

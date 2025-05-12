@@ -4,10 +4,12 @@ public class KafkaConfig {
 
     private String server;
     private int port;
+    private String topic;
 
-    public KafkaConfig(String server, int port) {
+    public KafkaConfig(String server, int port, String topic) {
         this.server = server;
         this.port = port;
+        this.topic = topic;
     }
 
 
@@ -17,5 +19,10 @@ public class KafkaConfig {
 
     public int getPort() {
         return port;
+    }
+
+
+    public String getTopic() {
+        return topic;
     }
 }

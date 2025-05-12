@@ -9,7 +9,8 @@ public class KafkaConfigLoader {
         Config conf = ConfigFactory.load();
         return new KafkaConfig(
                 conf.getString("config.kafka.server"),
-                conf.getInt("config.kafka.port")
+                conf.getInt("config.kafka.port"),
+                conf.getString("config.kafka.topic")
         );
 
     }
