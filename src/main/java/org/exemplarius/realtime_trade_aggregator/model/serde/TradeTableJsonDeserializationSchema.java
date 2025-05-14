@@ -1,11 +1,11 @@
-package org.exemplarius.realtime_trade_aggregator.utils;
+package org.exemplarius.realtime_trade_aggregator.model.serde;
 
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
-import org.exemplarius.realtime_trade_aggregator.trade_input.TradeTable;
+import org.exemplarius.realtime_trade_aggregator.model.input.TradeTable;
 
 import java.io.IOException;
 

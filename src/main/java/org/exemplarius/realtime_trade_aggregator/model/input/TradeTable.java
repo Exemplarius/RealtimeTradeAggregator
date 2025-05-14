@@ -1,6 +1,4 @@
-package org.exemplarius.realtime_trade_aggregator.trade_input;
-
-import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
+package org.exemplarius.realtime_trade_aggregator.model.input;
 
 import java.util.List;
 

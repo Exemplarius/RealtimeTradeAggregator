@@ -8,9 +8,9 @@ public class KafkaConfigLoader {
     public static KafkaConfig LoadConfig() {
         Config conf = ConfigFactory.load();
         return new KafkaConfig(
-                conf.getString("config.kafka.server"),
-                conf.getInt("config.kafka.port"),
-                conf.getString("config.kafka.topic")
+                conf.getString("config.kafka.ingestion.server"),
+                conf.getInt("config.kafka.ingestion.port"),
+                new KafkaTopic(conf.getString("config.kafka.topic.trade_event"), conf.getString("config.kafka.topic.trade_aggregate_event"))
         );
 
     }

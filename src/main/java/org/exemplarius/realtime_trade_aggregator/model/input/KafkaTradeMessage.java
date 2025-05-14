@@ -1,4 +1,4 @@
-package org.exemplarius.realtime_trade_aggregator.trade_input;
+package org.exemplarius.realtime_trade_aggregator.model.input;
 
 public class KafkaTradeMessage {
     private String key;

@@ -6,7 +6,7 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.triggers.Trigger;
 import org.apache.flink.streaming.api.windowing.triggers.TriggerResult;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeUnit;
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeUnit;
 import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
 
 public class ProcessingTimeFallbackTrigger extends Trigger<TradeUnit, TimeWindow> {

@@ -1,36 +1,39 @@
 package org.exemplarius.realtime_trade_aggregator;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.formats.json.JsonNodeDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.formats.json.JsonDeserializationSchema;
 import org.apache.flink.util.Collector;
 import org.exemplarius.realtime_trade_aggregator.config.KafkaConfig;
 import org.exemplarius.realtime_trade_aggregator.config.KafkaConfigLoader;
-import org.exemplarius.realtime_trade_aggregator.jdbc_sink.JdbcDatabaseSink;
+import org.exemplarius.realtime_trade_aggregator.config.KafkaTopic;
+import org.exemplarius.realtime_trade_aggregator.model.serde.AggregatedTradeSerializationSchema;
+import org.exemplarius.realtime_trade_aggregator.model.transform.AggregatedTrade;
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeUnit;
+import org.exemplarius.realtime_trade_aggregator.sink.JdbcDatabaseSink;
 import org.exemplarius.realtime_trade_aggregator.process.ContinuousTradeProcessor;
-import org.exemplarius.realtime_trade_aggregator.process.PeriodicEmissionProcessFunction;
-import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
-import org.exemplarius.realtime_trade_aggregator.trade_input.TradeTable;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.*;
-import org.exemplarius.realtime_trade_aggregator.trigger.ProcessingTimeFallbackTrigger;
+import org.exemplarius.realtime_trade_aggregator.model.input.Trade;
+import org.exemplarius.realtime_trade_aggregator.model.input.TradeTable;
 import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
 import org.exemplarius.realtime_trade_aggregator.utils.TimerBasedWatermarkGenerator;
-import org.exemplarius.realtime_trade_aggregator.utils.TradeTableJsonDeserializationSchema;
+import org.exemplarius.realtime_trade_aggregator.model.serde.TradeTableJsonDeserializationSchema;
 
 import java.time.Duration;
 import java.util.*;
 import java.sql.Timestamp;
 import java.util.stream.Collectors;
 
+import static org.exemplarius.realtime_trade_aggregator.process.ContinuousTradeProcessor.kafkaSideOutput;
 import static org.exemplarius.realtime_trade_aggregator.utils.TimestampUtils.greater;
 
 
@@ -53,7 +56,7 @@ public class Main {
         tradeTransform2(kafkaConfig.getTopic(), properties);
     }
 
-    public static void tradeTransform2(String topic, Properties properties) throws Exception {
+    public static void tradeTransform2(KafkaTopic topic, Properties properties) throws Exception {
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
@@ -65,16 +68,28 @@ public class Main {
 
 
         FlinkKafkaConsumer<TradeTable> kafkaConsumer = new FlinkKafkaConsumer<>(
-                topic,//"alfa",
+                topic.getTradeEvent(),//"alfa",
                 tts,
                 properties
         );
 
 
+        KafkaRecordSerializationSchema<AggregatedTrade> aggregatedTradeKafkaSerializationSchema =
+                KafkaRecordSerializationSchema.builder()
+                .setTopic(topic.getTradeAggregateEvent())
+                .setValueSerializationSchema(new AggregatedTradeSerializationSchema())
+                .build();
+        KafkaSink<AggregatedTrade> kafkaSink = KafkaSink.<AggregatedTrade>builder()
+                .setBootstrapServers(properties.getProperty("bootstrap.servers"))
+                .setRecordSerializer(aggregatedTradeKafkaSerializationSchema)
+                .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
+                .build();
+
+
         KafkaSource<TradeTable> source = KafkaSource.<TradeTable>builder()
                 .setBootstrapServers(properties.getProperty("bootstrap.servers"))
                 //.setTopics("alfa")
-                .setTopics(topic)
+                .setTopics(topic.getTradeEvent())
                 .setGroupId(properties.getProperty("group.id"))
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(tts)
@@ -125,7 +140,7 @@ public class Main {
                     }
                 });
 
-            DataStream<AggregatedTrade> aggregatedStream = tradeStream
+            SingleOutputStreamOperator<AggregatedTrade> aggregatedStream = tradeStream
                 .keyBy(trade -> true) // Global window
                 //.window(TumblingEventTimeWindows.of(Time.minutes(1)))
                 //.trigger(new ProcessingTimeFallbackTrigger(Time.seconds(3)))
@@ -133,11 +148,16 @@ public class Main {
                 //.aggregate(new TradeAggregateFunction(), new EmptyAwareTradeWindowFunction())
                 //.keyBy(aggregatedTrade -> true)
                 //.process(new PeriodicEmissionProcessFunction())
-                    .process(new ContinuousTradeProcessor())
-        ;
+                    .process(new ContinuousTradeProcessor());
+
+
 
         aggregatedStream.print();
         aggregatedStream.addSink(JdbcDatabaseSink.Elva("trade_volume_xbt_usd_min01"));
+
+        DataStream<AggregatedTrade> kafkaOutputStream = aggregatedStream.getSideOutput(kafkaSideOutput);
+        kafkaOutputStream.sinkTo(kafkaSink);
+
         env.execute("Flink Trade Aggregation");
     }
 
