@@ -82,7 +82,7 @@ public class Main {
         KafkaSink<AggregatedTrade> kafkaSink = KafkaSink.<AggregatedTrade>builder()
                 .setBootstrapServers(properties.getProperty("bootstrap.servers"))
                 .setRecordSerializer(aggregatedTradeKafkaSerializationSchema)
-                .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
+                .setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
                 .build();
 
 
