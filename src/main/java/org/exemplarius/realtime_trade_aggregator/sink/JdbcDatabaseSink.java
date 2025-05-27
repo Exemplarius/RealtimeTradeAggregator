@@ -1,4 +1,4 @@
-package org.exemplarius.realtime_trade_aggregator.jdbc_sink;
+package org.exemplarius.realtime_trade_aggregator.sink;
 
 import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
 import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
@@ -6,7 +6,7 @@ import org.apache.flink.connector.jdbc.JdbcSink;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.exemplarius.realtime_trade_aggregator.config.JdbcConfigLoader;
 import org.exemplarius.realtime_trade_aggregator.config.JdbcDatabaseConfig;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
+import org.exemplarius.realtime_trade_aggregator.model.transform.AggregatedTrade;
 
 import java.sql.PreparedStatement;
 

@@ -1,10 +1,8 @@
 package org.exemplarius.realtime_trade_aggregator.trade_transform;
 
 import org.apache.flink.api.common.functions.AggregateFunction;
-import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
-
-import java.sql.Timestamp;
-
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeAccumulator;
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeUnit;
 
 
 public class TradeAggregateFunction implements AggregateFunction<TradeUnit, TradeAccumulator, TradeAccumulator> {

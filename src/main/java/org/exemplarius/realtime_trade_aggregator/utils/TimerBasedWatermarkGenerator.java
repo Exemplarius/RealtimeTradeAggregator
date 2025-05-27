@@ -3,7 +3,7 @@ package org.exemplarius.realtime_trade_aggregator.utils;
 import org.apache.flink.api.common.eventtime.Watermark;
 import org.apache.flink.api.common.eventtime.WatermarkGenerator;
 import org.apache.flink.api.common.eventtime.WatermarkOutput;
-import org.exemplarius.realtime_trade_aggregator.trade_input.TradeTable;
+import org.exemplarius.realtime_trade_aggregator.model.input.TradeTable;
 
 import java.time.Duration;
 

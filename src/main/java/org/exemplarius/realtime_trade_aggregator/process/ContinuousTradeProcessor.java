@@ -6,11 +6,11 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
-import org.exemplarius.realtime_trade_aggregator.trade_input.Trade;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.AggregatedTrade;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeAccumulator;
+import org.apache.flink.util.OutputTag;
+import org.exemplarius.realtime_trade_aggregator.model.transform.AggregatedTrade;
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeAccumulator;
 import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeAggregateFunction;
-import org.exemplarius.realtime_trade_aggregator.trade_transform.TradeUnit;
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeUnit;
 import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
 
 import java.sql.Timestamp;
@@ -24,6 +24,8 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
     private ValueState<AggregatedTrade> lastTradeState;
     private MapState<Long, TradeAccumulator> activeWindowStates;
 
+    public static final OutputTag<AggregatedTrade> kafkaSideOutput =
+            new OutputTag<AggregatedTrade>("kafka-output-stream") {};
 
     private TradeAccumulator windowState(Long key) throws Exception {
         if (activeWindowStates.contains(key)) {
@@ -42,7 +44,13 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
 
         // Register timer for this window if not already registered
         long windowEnd = currentWindowStart + WINDOW_SIZE;
+
+
+        // most likely we will need to adjust this to emit datat more often
         ctx.timerService().registerProcessingTimeTimer(windowEnd + WINDOW_OFFSET);
+
+        // register second based timer every second
+        //ctx.timerService().registerProcessingTimeTimer(ctx.timestamp() + 1000 );
 
 
         // Get or create accumulator for current window
@@ -54,7 +62,7 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
 
         activeWindowStates.put(windowEnd, acc);
 
-
+        ctx.output(kafkaSideOutput, TradeAggregationUtils.fromAccumulator(acc));
         //E9sLogger.logger.info("Processed trade for window ending at: " + new Timestamp(windowEnd));
     }
 
@@ -69,49 +77,12 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
         if (activeWindowStates.contains(windowEndTimestamp)) {
             // We had trades in this window - use accumulated data
             TradeAccumulator acc = activeWindowStates.get(windowEndTimestamp);
-            result.trades = acc.trades;
-            result.buys = acc.buys;
-            result.sells = acc.sells;
-            result.buyVolume = acc.buyVolume;
-            result.sellVolume = acc.sellVolume;
-            result.buyOpen = acc.buyOpen;
-            result.sellOpen = acc.sellOpen;
-            result.buyHigh = acc.buyHigh;
-            result.sellHigh = acc.sellHigh;
-            result.buyLow = acc.buyLow == Double.MAX_VALUE ? -1 : acc.buyLow;
-            result.sellLow = acc.sellLow == Double.MAX_VALUE ? -1 : acc.sellLow;
-            result.buyClose = acc.buyClose;
-            result.sellClose = acc.sellClose;
-            result.lastBuyTimestamp = acc.lastBuyTimestamp;
-            result.lastSellTimestamp = acc.lastSellTimestamp;
-            result.open = acc.open;
-            result.high = acc.high;
-            result.low = acc.low == Double.MAX_VALUE ? -1 : acc.low;
-            result.close = acc.close;
 
+            result = TradeAggregationUtils.fromAccumulator(acc);
             E9sLogger.logger.info("Processing window with " + acc.trades + " trades");
         } else if (lastTrade != null) {
             // Empty window - use last trade values
-            result.trades = 0;
-            result.buys = 0;
-            result.sells = 0;
-            result.buyVolume = 0;
-            result.sellVolume = 0;
-            // Maintain last known prices
-            result.buyOpen = lastTrade.buyClose;
-            result.sellOpen = lastTrade.sellClose;
-            result.buyHigh = lastTrade.buyClose;
-            result.sellHigh = lastTrade.sellClose;
-            result.buyLow = lastTrade.buyClose;
-            result.sellLow = lastTrade.sellClose;
-            result.buyClose = lastTrade.buyClose;
-            result.sellClose = lastTrade.sellClose;
-            result.lastBuyTimestamp = lastTrade.lastBuyTimestamp;
-            result.lastSellTimestamp = lastTrade.lastSellTimestamp;
-            result.open = lastTrade.close;
-            result.high = lastTrade.close;
-            result.low = lastTrade.close;
-            result.close = lastTrade.close;
+            result = TradeAggregationUtils.fromPreviousAggregatedTrade(lastTrade);
 
             E9sLogger.logger.info("Processing empty window, using last known values");
         } else {
@@ -135,6 +106,7 @@ public class ContinuousTradeProcessor extends KeyedProcessFunction<Boolean, Trad
         result.processing_timestamp = Timestamp.valueOf(LocalDateTime.now());
 
         out.collect(result);
+        ctx.output(kafkaSideOutput, result);
         lastTradeState.update(result);
 
         // Clear the current window state

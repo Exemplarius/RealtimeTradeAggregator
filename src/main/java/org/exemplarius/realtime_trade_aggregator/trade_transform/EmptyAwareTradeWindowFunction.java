@@ -4,6 +4,8 @@ import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.exemplarius.realtime_trade_aggregator.model.transform.AggregatedTrade;
+import org.exemplarius.realtime_trade_aggregator.model.transform.TradeAccumulator;
 import org.exemplarius.realtime_trade_aggregator.utils.E9sLogger;
 
 import java.sql.Timestamp;
