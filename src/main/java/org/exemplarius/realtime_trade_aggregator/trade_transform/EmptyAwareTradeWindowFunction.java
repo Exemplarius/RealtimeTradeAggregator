@@ -102,15 +102,15 @@ public class EmptyAwareTradeWindowFunction extends ProcessWindowFunction<TradeAc
         result.sellOpen = acc.sellOpen;
         result.buyHigh = acc.buyHigh;
         result.sellHigh = acc.sellHigh;
-        result.buyLow = acc.buyLow == Double.MAX_VALUE ? -1 : acc.buyLow;
-        result.sellLow = acc.sellLow == Double.MAX_VALUE ? -1 : acc.sellLow;
+        result.buyLow = acc.buyLow;
+        result.sellLow = acc.sellLow;
         result.buyClose = acc.buyClose;
         result.sellClose = acc.sellClose;
         result.lastBuyTimestamp = acc.lastBuyTimestamp;
         result.lastSellTimestamp = acc.lastSellTimestamp;
         result.open = acc.open;
         result.high = acc.high;
-        result.low = acc.low == Double.MAX_VALUE ? -1 : acc.low;
+        result.low =  acc.low;
         result.close = acc.close;
 
         setWindowTimestamps(result, context);

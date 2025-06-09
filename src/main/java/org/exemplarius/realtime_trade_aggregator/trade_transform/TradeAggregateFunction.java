@@ -18,8 +18,8 @@ public class TradeAggregateFunction implements AggregateFunction<TradeUnit, Trad
             acc.buys++;
             acc.buyVolume += trade.size;
             acc.buyHigh = Math.max(acc.buyHigh, trade.price);
-            acc.buyLow = Math.min(acc.buyLow, trade.price);
-            if (acc.buyOpen == 0) acc.buyOpen = trade.price;
+            acc.buyLow = acc.buyLow > 0 ? Math.min(acc.buyLow, trade.price) : trade.price;
+            if (acc.buyOpen == -1) acc.buyOpen = trade.price;
             acc.buyClose = trade.price;
             acc.lastBuyTimestamp = trade.timestamp;
         } else {
@@ -27,13 +27,13 @@ public class TradeAggregateFunction implements AggregateFunction<TradeUnit, Trad
             acc.sellVolume += trade.size;
             acc.sellHigh = Math.max(acc.sellHigh, trade.price);
             acc.sellLow = acc.sellLow > 0 ? Math.min(acc.sellLow, trade.price): trade.price;
-            if (acc.sellOpen == 0) acc.sellOpen = trade.price;
+            if (acc.sellOpen == -1) acc.sellOpen = trade.price;
             acc.sellClose = trade.price;
             acc.lastSellTimestamp = trade.timestamp;
         }
-        if (acc.open == 0) acc.open = trade.price;
+        if (acc.open == -1) acc.open = trade.price;
         acc.high = Math.max(acc.high, trade.price);
-        acc.low = Math.min(acc.low, trade.price);
+        acc.low = acc.low > 0 ? Math.min(acc.low, trade.price) : trade.price;
         acc.close = trade.price;
         return acc;
     }
