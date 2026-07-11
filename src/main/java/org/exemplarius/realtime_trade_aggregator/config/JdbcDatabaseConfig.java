@@ -6,13 +6,15 @@ public class JdbcDatabaseConfig {
     private String database;
     private String username;
     private String password;
+    private String schema;
 
-    public JdbcDatabaseConfig(String hostname, int port, String database, String username, String password) {
+    public JdbcDatabaseConfig(String hostname, int port, String database, String username, String password, String schema) {
         this.hostname = hostname;
         this.port = port;
         this.database = database;
         this.username = username;
         this.password = password;
+        this.schema = schema;
     }
 
     public String getHostname() {
@@ -55,10 +57,19 @@ public class JdbcDatabaseConfig {
         this.password = password;
     }
 
+    public String getSchema() {
+        return schema;
+    }
+
+    public void setSchema(String schema) {
+        this.schema = schema;
+    }
+
     public String getJdbcUrl(String engine) {
         switch (engine) {
+            // trade_volume tables are unqualified, so currentSchema routes writes to the market schema.
             case "postgres":
-                return String.format("jdbc:postgresql://%s:%d/%s", hostname, port, database);
+                return String.format("jdbc:postgresql://%s:%d/%s?currentSchema=%s", hostname, port, database, schema);
             default:
                 return "";
         }
