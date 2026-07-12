@@ -10,17 +10,29 @@ public class JdbcConfigLoader {
         URI uri = URI.create(requireEnv("E9S_MARKET_DATABASE_URL"));
         String schema = requireEnv("MARKET_SCHEMA");
 
-        String[] userInfo = (uri.getUserInfo() == null ? "" : uri.getUserInfo()).split(":", 2);
-        int port = uri.getPort() == -1 ? 5432 : uri.getPort();
-        String path = uri.getPath();
+        // java.net.URI.getHost/getUserInfo/getPort return null/-1 when the host contains an underscore
+        // (e.g. the docker service name `candle_database`), so parse the authority ([user[:pass]@]host[:port])
+        // ourselves to stay robust to underscore hosts.
+        String authority = uri.getAuthority() == null ? "" : uri.getAuthority();
+        String userInfoPart = "";
+        String hostPort = authority;
+        int at = authority.indexOf('@');
+        if (at >= 0) {
+            userInfoPart = authority.substring(0, at);
+            hostPort = authority.substring(at + 1);
+        }
+        String[] creds = userInfoPart.split(":", 2);
+        String[] hp = hostPort.split(":", 2);
+        int port = (hp.length > 1 && !hp[1].isEmpty()) ? Integer.parseInt(hp[1]) : 5432;
+        String path = uri.getPath() == null ? "" : uri.getPath();
         String database = path.startsWith("/") ? path.substring(1) : path;
 
         return new JdbcDatabaseConfig(
-                uri.getHost(),
+                hp[0],
                 port,
                 database,
-                userInfo.length > 0 ? userInfo[0] : "",
-                userInfo.length > 1 ? userInfo[1] : "",
+                creds.length > 0 ? creds[0] : "",
+                creds.length > 1 ? creds[1] : "",
                 schema
         );
     }
