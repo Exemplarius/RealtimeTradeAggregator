@@ -2,6 +2,9 @@
 # RealtimeTradeAggregator
 A Flink application for realtime Bitmex trade stream transformations
 
+> **Documentation** lives in [`docs/`](docs/) — start at [`docs/ROUTES.md`](docs/ROUTES.md)
+> (the router: task → doc table, index, code map). Agents: read [`CLAUDE.md`](CLAUDE.md) first.
+
 This is a template application that originally reads Exemplarius kafka topics and aggregates
 the data and insert it to postgres
 
